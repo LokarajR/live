@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Laptop Recommendation System</title>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;800&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Manrope', sans-serif;
+      background: linear-gradient(to right, #1e1e2f, #1a1a2e);
+      color: #f0f0f0;
+      margin: 0;
+      padding: 40px 20px;
+    }
+
+    h1 {
+      text-align: center;
+      font-size: 3rem;
+      font-weight: 800;
+      margin-bottom: 40px;
+      background: linear-gradient(to right, #00c6ff, #0072ff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .container {
+      max-width: 1000px;
+      margin: auto;
+    }
+
+    .card {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 16px;
+      padding: 30px;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+      backdrop-filter: blur(20px);
+      margin-bottom: 30px;
+    }
+
+    label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 8px;
+      font-size: 1rem;
+    }
+
+    input, select {
+      width: 100%;
+      padding: 14px;
+      margin-bottom: 20px;
+      border-radius: 8px;
+      border: none;
+      font-size: 1rem;
+      background: rgba(255, 255, 255, 0.08);
+      color: #9e9a9a;
+    }
+
+    input::placeholder {
+      color: #aaa;
+    }
+
+    button {
+      width: 100%;
+      background: linear-gradient(to right, #00c6ff, #0072ff);
+      color: white;
+      border: none;
+      padding: 16px;
+      border-radius: 10px;
+      font-size: 1rem;
+      font-weight: bold;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      cursor: pointer;
+    }
+
+    button:hover {
+      transform: scale(1.03);
+      box-shadow: 0 6px 15px rgba(0, 198, 255, 0.4);
+    }
+
+    .success-message {
+      font-size: 1.1rem;
+      color: #00e676;
+      font-weight: bold;
+      margin-bottom: 20px;
+    }
+
+    .error {
+      background-color: #ff4e4e;
+      padding: 15px;
+      border-radius: 8px;
+      color: white;
+      margin-bottom: 20px;
+    }
+
+    .loading {
+      text-align: center;
+      font-style: italic;
+      color: #ccc;
+    }
+
+    .laptop-card {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 14px;
+      padding: 20px;
+      margin-bottom: 20px;
+      transition: all 0.3s ease;
+    }
+
+    .laptop-card:hover {
+      transform: scale(1.02);
+      background-color: rgba(255, 255, 255, 0.05);
+    }
+
+    .laptop-card img {
+      width: 150px;
+      height: 100px;
+      object-fit: cover;
+      border-radius: 10px;
+      margin-right: 20px;
+      background-color: #444;
+    }
+
+    .laptop-details {
+      flex: 1;
+      font-size: 0.95rem;
+    }
+
+    .laptop-price {
+      color: #00e676;
+      font-weight: bold;
+      margin-top: 8px;
+    }
+
+    @media (max-width: 600px) {
+      .laptop-card {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .laptop-card img {
+        margin-bottom: 15px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Laptop Recommendation System</h1>
+
+    <div class="card">
+      <label for="price">Your Budget (₹):</label>
+      <input type="number" id="price" placeholder="e.g., 60000" min="10000" />
+
+      <label for="usage">Primary Usage:</label>
+      <input type="text" id="usage" placeholder="e.g., gaming, programming, design" />
+
+      <button id="recommend-btn" onclick="getRecommendation()">Get Recommendations</button>
+    </div>
+
+    <div class="card" id="filter-container" style="display: none;">
+      <label for="brand-filter">Filter by Brand:</label>
+      <select id="brand-filter">
+        <option value="all">All Brands</option>
+      </select>
+    </div>
+
+    <div id="response"></div>
+  </div>
+
+  <script>
+    /**
+     * Fetches the first Bing Images result URL by scraping via AllOrigins proxy.
+     */
+    async function fetchImageUrl(query) {
+      try {
+        const proxy = 'https://api.allorigins.win/raw?url=';
+        const bingUrl = 'https://www.bing.com/images/search?q=' + encodeURIComponent(query);
+        const res = await fetch(proxy + encodeURIComponent(bingUrl));
+        const html = await res.text();
+        const match = html.match(/<img[^>]+src=["'](https?:\/\/[^"']+)["']/);
+        return match ? match[1] : 'https://via.placeholder.com/150?text=No+Image';
+      } catch (err) {
+        console.error('Image fetch error:', err);
+        return 'https://via.placeholder.com/150?text=No+Image';
+      }
+    }
+
+    async function getRecommendation() {
+      const price = document.getElementById('price').value.trim();
+      const usage = document.getElementById('usage').value.trim();
+      const responseDiv = document.getElementById('response');
+      const button = document.getElementById('recommend-btn');
+
+      responseDiv.innerHTML = '';
+      document.getElementById('filter-container').style.display = 'none';
+
+      if (!price || isNaN(price)) return showError('Please enter a valid budget amount');
+      if (!usage) return showError("Please describe how you'll use the laptop");
+
+      button.disabled = true;
+      button.textContent = 'Loading...';
+      responseDiv.innerHTML = '<div class="loading">Fetching recommendations...</div>';
+
+      try {
+        const resp = await fetch('http://localhost:8080/recommend', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ price, usage })
+        });
+        const data = await resp.json();
+        if (!resp.ok) throw new Error(data.error || 'Failed to get recommendations');
+        displayRecommendations(data.recommendation);
+      } catch (e) {
+        console.error(e);
+        showError(e.message || 'An unexpected error occurred');
+      } finally {
+        button.disabled = false;
+        button.textContent = 'Get Recommendations';
+      }
+    }
+
+    async function displayRecommendations(recData) {
+      const responseDiv = document.getElementById('response');
+      let text = recData.candidates[0].content.parts[0].text.trim();
+      if (text.startsWith('```')) text = text.replace(/```json|```/g, '').trim();
+
+      let recs;
+      try {
+        recs = JSON.parse(text);
+      } catch {
+        return showError('Could not parse recommendations.');
+      }
+
+      if (!Array.isArray(recs) || !recs.length) return showError('No valid recommendations found.');
+
+      // Build brand filter
+      const brands = [...new Set(recs.map(r => r.brand))];
+      const brandSelect = document.getElementById('brand-filter');
+      brandSelect.innerHTML = '<option value="all">All Brands</option>' +
+        brands.map(b => `<option value="${b}">${b}</option>`).join('');
+      document.getElementById('filter-container').style.display = 'block';
+
+      // Render laptop cards
+      let html = '<div class="success-message">Here are our recommendations:</div>';
+      for (const laptop of recs) {
+        const imgUrl = await fetchImageUrl(laptop.model + ' laptop');
+        html += `
+          <div class="laptop-card" data-brand="${laptop.brand}">
+            <img src="${imgUrl}" alt="${laptop.model}" />
+            <div class="laptop-details">
+              <div><strong>Brand:</strong> ${laptop.brand}</div>
+              <div><strong>Model:</strong> ${laptop.model}</div>
+              <div class="laptop-price"><strong>Price:</strong> ${laptop.price}</div>
+              <div><strong>Specs:</strong> ${laptop.key_specs}</div>
+            </div>
+          </div>
+        `;
+      }
+      responseDiv.innerHTML = html;
+
+      // Filter functionality
+      document.getElementById('brand-filter').onchange = function() {
+        const val = this.value;
+        document.querySelectorAll('.laptop-card').forEach(card => {
+          card.style.display = (val === 'all' || card.dataset.brand === val) ? 'flex' : 'none';
+        });
+      };
+    }
+
+    function showError(msg) {
+      document.getElementById('response').innerHTML = `<div class="error">${msg}</div>`;
+    }
+  </script>
+</body>
+</html>
