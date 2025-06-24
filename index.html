@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laptop Recommendation System</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .input-container {
+            background-color: white;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            font-size: 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        button:disabled {
+            background-color: #95a5a6;
+            cursor: not-allowed;
+        }
+        #response {
+            margin-top: 20px;
+        }
+        .laptop-card {
+            background-color: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        .laptop-card h3 {
+            margin-top: 0;
+            color: #2c3e50;
+        }
+        .laptop-specs {
+            margin: 10px 0;
+        }
+        .laptop-price {
+            font-weight: bold;
+            color: #27ae60;
+        }
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #7f8c8d;
+        }
+        .error {
+            color: #e74c3c;
+            padding: 15px;
+            background-color: #fadbd8;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+        .success-message {
+            color: #27ae60;
+            margin-bottom: 15px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>Laptop Recommendation System</h1>
+    
+    <div class="input-container">
+        <div class="form-group">
+            <label for="price">Your Budget (₹):</label>
+            <input type="number" id="price" placeholder="e.g., 50000" min="10000">
+        </div>
+        
+        <div class="form-group">
+            <label for="usage">Primary Usage:</label>
+            <input type="text" id="usage" placeholder="e.g., gaming, programming, graphic design">
+        </div>
+        
+        <button id="recommend-btn" onclick="getRecommendation()">Get Recommendations</button>
+    </div>
+    
+    <div id="response"></div>
+
+    <script>
+        async function getRecommendation() {
+            const price = document.getElementById("price").value.trim();
+            const usage = document.getElementById("usage").value.trim();
+            const responseDiv = document.getElementById("response");
+            const button = document.getElementById("recommend-btn");
+            
+            // Clear previous results
+            responseDiv.innerHTML = "";
+            
+            // Validate inputs
+            if (!price || isNaN(price)) {
+                showError("Please enter a valid budget amount");
+                return;
+            }
+            
+            if (!usage) {
+                showError("Please describe how you'll use the laptop");
+                return;
+            }
+            
+            // Disable button during request
+            button.disabled = true;
+            button.textContent = "Loading...";
+            
+            // Show loading state
+            responseDiv.innerHTML = '<div class="loading">Fetching recommendations...</div>';
+            
+            try {
+                const response = await fetch("http://localhost:8080/recommend", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        price: price,
+                        usage: usage
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.error || "Failed to get recommendations");
+                }
+                
+                // Process the recommendation
+                if (data.recommendation && data.recommendation.candidates) {
+                    displayRecommendations(data.recommendation);
+                } else {
+                    throw new Error("Unexpected response format from server");
+                }
+                
+            } catch (error) {
+                console.error("Error:", error);
+                showError(error.message || "An unexpected error occurred");
+            } finally {
+                // Re-enable button
+                button.disabled = false;
+                button.textContent = "Get Recommendations";
+            }
+        }
+        
+        function displayRecommendations(recommendationData) {
+            const responseDiv = document.getElementById("response");
+            
+            try {
+                // Extract the text response from Gemini
+                const textResponse = recommendationData.candidates[0].content.parts[0].text;
+                
+                // Try to parse as JSON (if Gemini returned proper JSON)
+                try {
+                    const recommendations = JSON.parse(textResponse);
+                    
+                    if (Array.isArray(recommendations) && recommendations.length > 0) {
+                        // Display formatted recommendations
+                        let html = '<div class="success-message">Here are our recommendations:</div>';
+                        
+                        recommendations.forEach((laptop, index) => {
+                            html += `
+                                <div class="laptop-card">
+                                    <h3>${index + 1}. ${laptop.brand || 'Unknown Brand'} ${laptop.model || 'Unknown Model'}</h3>
+                                    <div class="laptop-price">Price: ${laptop.price || 'Not specified'}</div>
+                                    <div class="laptop-specs">${laptop.key_specs || 'No specifications provided'}</div>
+                                </div>
+                            `;
+                        });
+                        
+                        responseDiv.innerHTML = html;
+                        return;
+                    }
+                } catch (e) {
+                    console.log("Response wasn't JSON, displaying as text");
+                }
+                
+                // Fallback to displaying as plain text
+                responseDiv.innerHTML = `
+                    <div class="success-message">Recommendations:</div>
+                    <div class="laptop-card">${textResponse.replace(/\n/g, '<br>')}</div>
+                `;
+                
+            } catch (error) {
+                console.error("Error displaying recommendations:", error);
+                showError("Could not process the recommendations");
+            }
+        }
+        
+        function showError(message) {
+            const responseDiv = document.getElementById("response");
+            responseDiv.innerHTML = `<div class="error">${message}</div>`;
+        }
+    </script>
+</body>
+</html>
