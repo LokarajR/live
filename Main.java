@@ -11,7 +11,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.stream.Collectors;
 
 public class Main {
-    private static final String GEMINI_API_KEY; //= "AIzaSyDCaFFGV_5f_wu-deQkqgGfqCvLOcoohPc"; // Replace with your actual key
+    private static final String GEMINI_API_KEY = "AIzaSyDCaFFGV_5f_wu-deQkqgGfqCvLOcoohPc"; // Replace with your actual key
     private static final String GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=" + GEMINI_API_KEY;
 
     public static void main(String[] args) throws IOException {
