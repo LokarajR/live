@@ -13,13 +13,15 @@ import java.util.stream.Collectors;
 public class Main {
     private static final String GEMINI_API_KEY = "AIzaSyDCaFFGV_5f_wu-deQkqgGfqCvLOcoohPc"; // Replace with your actual key
     private static final String GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=" + GEMINI_API_KEY;
-
     public static void main(String[] args) throws IOException {
-        HttpServer server = HttpServer.create(new InetSocketAddress("localhost", 8080), 0);
-        server.createContext("/recommend", new RecommendationHandler());
+        int port = Integer.parseInt(System.getenv().getOrDefault("PORT", "8080"));
+        HttpServer server = HttpServer.create(new InetSocketAddress("0.0.0.0", port), 0);
+        server.createContext("/recommend", new RecommendHandler());
+        server.setExecutor(null);
         server.start();
-        System.out.println("Backend running on http://localhost:8080");
+        System.out.println("Server started on port " + port);
     }
+
 
     static class RecommendationHandler implements HttpHandler {
         @Override
